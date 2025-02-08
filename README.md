@@ -6,7 +6,7 @@ Une application web qui génère automatiquement des questions à partir de docu
 
 - Upload de documents PDF
 - Extraction automatique du texte
-- Génération de questions avec OpenAI GPT-3.5
+- Génération de questions avec Gemini
 - Interface utilisateur moderne et responsive
 - Différents types de questions (QCM, Oui/Non, Réponse courte)
 

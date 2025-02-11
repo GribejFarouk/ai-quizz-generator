@@ -13,7 +13,7 @@ Une application web qui génère automatiquement des questions à partir de docu
 ## Prérequis
 
 - Python 3.8+
-- Une clé API OpenAI
+- Une clé API Gemini
 
 ## Installation
 

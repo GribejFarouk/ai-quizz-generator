@@ -11,9 +11,13 @@ from pathlib import Path
 import json
 from typing import Dict, List
 import re
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configuration Gemini API
-genai.configure(api_key="AIzaSyAIwolxxrOG55S87m-t6OoKF4M-iWsMlNg")
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-pro')
 
 app = FastAPI(title="AI Quiz Generator")

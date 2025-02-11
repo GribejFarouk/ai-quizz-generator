@@ -23,9 +23,9 @@ Une application web qui génère automatiquement des questions à partir de docu
 pip install -r requirements.txt
 ```
 
-3. Créer un fichier `.env` à la racine du projet et ajouter votre clé API OpenAI :
+3. Créer un fichier `.env` à la racine du projet et ajouter votre clé API Gemini :
 ```
-OPENAI_API_KEY=votre_clé_api
+Gemini_API_KEY=votre_clé_api
 ```
 
 ## Lancement de l'application

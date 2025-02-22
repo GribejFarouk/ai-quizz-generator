@@ -1,83 +1,148 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Quiz Generator</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    animation: {
+                        'gradient': 'gradient 8s linear infinite',
+                    },
+                    keyframes: {
+                        gradient: {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .theme-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .gradient-border {
+            position: relative;
+            border: double 1px transparent;
+            border-radius: 0.5rem;
+            background-image: linear-gradient(#1f2937, #1f2937), 
+                            linear-gradient(to right, #4f46e5, #7c3aed);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: gradient 3s ease infinite;
+        }
+
+        .hover-gradient:hover {
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            transform: translateY(-2px);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .glass-effect {
+            backdrop-filter: blur(8px);
+            background: rgba(31, 41, 55, 0.8);
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="text-center mb-12">
-            <h1 class="text-4xl font-bold text-indigo-600 mb-2">AI Quiz Generator</h1>
-            <p class="text-gray-600">Générez automatiquement des questions à partir de vos documents PDF</p>
-        </header>
-
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <div class="mb-6">
-                <div class="flex items-center justify-center w-full">
-                    <label class="flex flex-col w-full h-32 border-4 border-dashed hover:bg-gray-100 hover:border-indigo-500 rounded-lg">
-                        <div class="flex flex-col items-center justify-center pt-7">
-                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                            <p class="text-sm text-gray-400">Glissez votre PDF ici ou</p>
-                            <button type="button" id="uploadBtn" class="mt-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-                                Sélectionnez un fichier
-                            </button>
-                        </div>
-                        <input type="file" id="fileInput" class="hidden" accept=".pdf" />
-                    </label>
+<body class="min-h-screen theme-transition bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+    <nav class="glass-effect fixed w-full z-40 shadow-lg theme-transition border-b border-gray-700">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <!-- Left side - Logo -->
+            <div class="flex items-center">
+                <div class="relative w-64 h-28 animate-float">
+                    <img src="/static/images/white.svg" alt="AI Quiz Gen Logo" 
+                         class="absolute inset-0 w-full h-full object-contain">
                 </div>
-                <p id="fileName" class="mt-2 text-sm text-gray-500 text-center"></p>
-            </div>
-
-            <div class="text-center">
-                <button id="generateBtn" disabled class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fas fa-magic mr-2"></i>Générer les Questions
-                </button>
-            </div>
-        </div>
-
-        <div id="loadingIndicator" class="hidden">
-            <div class="flex justify-center items-center space-x-2">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                <span class="text-gray-600">Génération en cours...</span>
-            </div>
-        </div>
-
-        <div id="questionsContainer" class="space-y-6 hidden">
-            <div id="mcqQuestions" class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-bold text-indigo-600 mb-4">Questions à Choix Multiples</h2>
-                <div class="space-y-4"></div>
-            </div>
-
-            <div id="yesNoQuestions" class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-bold text-indigo-600 mb-4">Questions Oui/Non</h2>
-                <div class="space-y-4"></div>
-            </div>
-
-            <div id="shortAnswerQuestions" class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-bold text-indigo-600 mb-4">Questions à Réponse Courte</h2>
-                <div class="space-y-4"></div>
             </div>
             
-            <div class="text-center mt-6">
-                <button id="submitBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-green-700 transition-colors">
-                    <i class="fas fa-check mr-2"></i>Vérifier les Réponses
-                </button>
-            </div>
-            
-            <div id="resultsContainer" class="mt-6 bg-white rounded-lg shadow-lg p-6 hidden">
-                <h2 class="text-2xl font-bold text-indigo-600 mb-4">Résultats</h2>
-                <div class="text-lg mb-4">
-                    Score: <span id="scoreDisplay" class="font-bold text-green-600">0/0</span>
+            <!-- Right side - Powered by text -->
+            <div class="flex items-center">
+                <div class="text-sm gradient-border px-4 py-2">
+                    <span class="opacity-75">Powered by</span>
+                    <span class="font-semibold ml-1 gradient-text">Gemini AI</span>
                 </div>
-                <button id="showAnswersBtn" class="text-indigo-600 hover:text-indigo-800 underline">
-                    Afficher les réponses correctes
-                </button>
             </div>
         </div>
-    </div>
+    </nav>
+
+    <main class="container mx-auto px-4 pt-36 pb-12">
+        <!-- File Upload Section -->
+        <div id="dropZone" class="mb-8 p-8 gradient-border text-center cursor-pointer hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300">
+            <input type="file" id="fileInput" class="hidden" accept=".pdf">
+            <div class="space-y-6">
+                <i class="fas fa-file-upload text-5xl text-indigo-400 animate-float"></i>
+                <h3 class="text-xl font-semibold gradient-text">Drop your PDF file here</h3>
+                <p class="text-sm text-gray-400">or</p>
+                <button id="uploadBtn" class="px-8 py-4 bg-indigo-600 text-white rounded-lg font-semibold hover-gradient transition-all duration-300 shadow-lg hover:shadow-xl">
+                    Choose a file
+                </button>
+                <p id="fileName" class="text-sm text-gray-400 mt-2"></p>
+            </div>
+        </div>
+
+        <!-- Generate Button -->
+        <div class="text-center mb-8">
+            <button id="generateBtn" class="px-10 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-500 hover:to-emerald-500 transform hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled>
+                Generate Questions
+            </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden text-center space-y-4 mb-8">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-indigo-400 border-t-transparent shadow-lg"></div>
+            <p class="text-lg text-indigo-400 animate-pulse">Generating questions...</p>
+        </div>
+
+        <!-- Questions Container -->
+        <div id="questionsContainer" class="hidden space-y-6 glass-effect p-8 rounded-lg shadow-xl theme-transition">
+            <!-- Questions will be dynamically added here -->
+        </div>
+
+        <!-- Submit and Show Answers Buttons -->
+        <div class="text-center space-x-6 mt-8">
+            <button id="submitBtn" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-500 hover:to-indigo-500 transform hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+                Submit Answers
+            </button>
+            <button id="showAnswersBtn" class="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:from-purple-500 hover:to-pink-500 transform hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+                Show Answers
+            </button>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" class="hidden mt-8 p-8 glass-effect rounded-lg shadow-xl theme-transition">
+            <h3 class="text-2xl font-semibold mb-4 gradient-text">Results</h3>
+            <p id="scoreDisplay" class="text-lg"></p>
+        </div>
+    </main>
 
     <script src="/static/js/main.js"></script>
 </body>

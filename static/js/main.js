@@ -1,4 +1,6 @@
+// Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
+    // Cache DOM elements
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
     const generateBtn = document.getElementById('generateBtn');
@@ -9,239 +11,327 @@ document.addEventListener('DOMContentLoaded', () => {
     const questionsContainer = document.getElementById('questionsContainer');
     const resultsContainer = document.getElementById('resultsContainer');
     const scoreDisplay = document.getElementById('scoreDisplay');
-    
-    let extractedText = '';
-    let currentQuestions = null;
+    const dropZone = document.getElementById('dropZone');
 
-    uploadBtn.addEventListener('click', () => {
-        fileInput.click();
-    });
+    // State management
+    const state = {
+        file: null,
+        extractedText: '',
+        questions: [],
+        userAnswers: {},
+        score: 0
+    };
 
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            console.log('File selected:', file.name);
+    // File handling functions
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file && file.type === 'application/pdf') {
+            state.file = file;
             fileName.textContent = file.name;
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                generateBtn.disabled = true;
-                console.log('Uploading file...');
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Erreur lors du chargement du fichier');
-                }
-
-                console.log('Upload response:', data);
-                extractedText = data.text;
-                generateBtn.disabled = false;
-            } catch (error) {
-                console.error('Upload error:', error);
-                alert('Erreur lors du chargement du fichier: ' + error.message);
-                generateBtn.disabled = true;
-            }
+            generateBtn.disabled = false;
+            
+            // Add success class to filename
+            fileName.className = 'text-sm text-emerald-400 mt-2';
+        } else {
+            state.file = null;
+            fileName.textContent = file ? 'Please select a PDF file' : '';
+            generateBtn.disabled = true;
+            
+            // Add error class to filename
+            fileName.className = 'text-sm text-red-400 mt-2';
         }
-    });
+    }
 
-    generateBtn.addEventListener('click', async () => {
-        console.log('Generate button clicked');
-        if (!extractedText) {
-            console.error('No text available for generation');
-            return;
+    // Drag and drop handling
+    function handleDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        dropZone.classList.add('border-indigo-500');
+    }
+
+    function handleDragLeave(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        dropZone.classList.remove('border-indigo-500');
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        dropZone.classList.remove('border-indigo-500');
+
+        const file = event.dataTransfer.files[0];
+        if (file && file.type === 'application/pdf') {
+            state.file = file;
+            fileName.textContent = file.name;
+            generateBtn.disabled = false;
+            fileInput.files = event.dataTransfer.files;
+            
+            // Add success class to filename
+            fileName.className = 'text-sm text-emerald-400 mt-2';
+        } else {
+            state.file = null;
+            fileName.textContent = 'Please drop a PDF file';
+            generateBtn.disabled = true;
+            
+            // Add error class to filename
+            fileName.className = 'text-sm text-red-400 mt-2';
         }
+    }
 
+    async function handleGenerate() {
+        if (!state.file) return;
+
+        // Show loading state
         loadingIndicator.classList.remove('hidden');
-        questionsContainer.classList.add('hidden');
-        resultsContainer.classList.add('hidden');
         generateBtn.disabled = true;
 
         try {
-            console.log('Sending text for question generation...');
-            const response = await fetch('/generate-questions', {
+            // First upload the file
+            const formData = new FormData();
+            formData.append('file', state.file);
+
+            const uploadResponse = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error('Failed to upload file');
+            }
+
+            const uploadData = await uploadResponse.json();
+            state.extractedText = uploadData.text;
+
+            // Then generate questions
+            const generateResponse = await fetch('/generate-questions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text: extractedText })
+                body: JSON.stringify({ text: state.extractedText })
             });
 
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.detail || 'Erreur lors de la génération des questions');
+            if (!generateResponse.ok) {
+                throw new Error('Failed to generate questions');
             }
 
-            console.log('Generation response:', data);
-            
-            if (!data.questions) {
-                throw new Error('No questions received from server');
-            }
+            const generateData = await generateResponse.json();
+            state.questions = JSON.parse(generateData.questions);
 
-            currentQuestions = JSON.parse(data.questions);
-            console.log('Parsed questions:', currentQuestions);
-            
-            if (!currentQuestions.mcq || !currentQuestions.yesNo || !currentQuestions.shortAnswer) {
-                throw new Error('Format de questions invalide');
-            }
-
-            displayQuestions(currentQuestions);
+            // Display questions
+            displayQuestions(state.questions);
         } catch (error) {
-            console.error('Generation error:', error);
-            alert('Erreur lors de la génération des questions: ' + error.message);
+            console.error('Error:', error);
+            fileName.textContent = 'Error generating questions. Please try again.';
+            fileName.className = 'text-sm text-red-400 mt-2';
         } finally {
             loadingIndicator.classList.add('hidden');
             generateBtn.disabled = false;
         }
-    });
-
-    submitBtn.addEventListener('click', () => {
-        if (!currentQuestions) return;
-        
-        let correctAnswers = 0;
-        let totalQuestions = 0;
-        
-        // Vérifier les QCM
-        currentQuestions.mcq.forEach((q, index) => {
-            const selectedAnswer = document.querySelector(`input[name="mcq-${index}"]:checked`);
-            const questionDiv = document.querySelector(`#mcqQuestions .space-y-4 > div:nth-child(${index + 1})`);
-            
-            if (selectedAnswer) {
-                totalQuestions++;
-                const isCorrect = parseInt(selectedAnswer.value) === q.correct_answer;
-                if (isCorrect) correctAnswers++;
-                
-                questionDiv.classList.add(isCorrect ? 'bg-green-50' : 'bg-red-50');
-                questionDiv.querySelector('[data-correct]').classList.remove('hidden');
-            }
-        });
-        
-        // Vérifier les questions Oui/Non
-        currentQuestions.yesNo.forEach((q, index) => {
-            const selectedAnswer = document.querySelector(`input[name="yn-${index}"]:checked`);
-            const questionDiv = document.querySelector(`#yesNoQuestions .space-y-4 > div:nth-child(${index + 1})`);
-            
-            if (selectedAnswer) {
-                totalQuestions++;
-                const isCorrect = selectedAnswer.value === q.correct_answer.toString();
-                if (isCorrect) correctAnswers++;
-                
-                questionDiv.classList.add(isCorrect ? 'bg-green-50' : 'bg-red-50');
-                questionDiv.querySelector('[data-correct]').classList.remove('hidden');
-            }
-        });
-        
-        // Afficher le score
-        scoreDisplay.textContent = `${correctAnswers}/${totalQuestions}`;
-        resultsContainer.classList.remove('hidden');
-    });
-
-    showAnswersBtn.addEventListener('click', () => {
-        // Afficher toutes les réponses correctes
-        document.querySelectorAll('[data-correct]').forEach(el => {
-            el.classList.remove('hidden');
-        });
-    });
+    }
 
     function displayQuestions(questions) {
-        console.log('Displaying questions:', questions);
-        const mcqContainer = document.querySelector('#mcqQuestions .space-y-4');
-        const yesNoContainer = document.querySelector('#yesNoQuestions .space-y-4');
-        const shortAnswerContainer = document.querySelector('#shortAnswerQuestions .space-y-4');
-
-        if (!mcqContainer || !yesNoContainer || !shortAnswerContainer) {
-            console.error('Question containers not found');
-            return;
-        }
-
-        // Vider les conteneurs
-        mcqContainer.innerHTML = '';
-        yesNoContainer.innerHTML = '';
-        shortAnswerContainer.innerHTML = '';
-
-        // Reset results
-        resultsContainer.classList.add('hidden');
-        scoreDisplay.textContent = '0/0';
-
-        // Afficher les questions
-        if (questions.mcq && Array.isArray(questions.mcq)) {
-            questions.mcq.forEach((q, index) => {
-                const questionDiv = createMCQQuestion(q, index);
-                mcqContainer.appendChild(questionDiv);
-            });
-        }
-
-        if (questions.yesNo && Array.isArray(questions.yesNo)) {
-            questions.yesNo.forEach((q, index) => {
-                const questionDiv = createYesNoQuestion(q, index);
-                yesNoContainer.appendChild(questionDiv);
-            });
-        }
-
-        if (questions.shortAnswer && Array.isArray(questions.shortAnswer)) {
-            questions.shortAnswer.forEach((q, index) => {
-                const questionDiv = createShortAnswerQuestion(q, index);
-                shortAnswerContainer.appendChild(questionDiv);
-            });
-        }
-
+        questionsContainer.innerHTML = '';
         questionsContainer.classList.remove('hidden');
+
+        // Display MCQ questions
+        questions.mcq.forEach((question, index) => {
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'mb-6 p-6 glass-effect rounded-lg';
+            
+            const questionText = document.createElement('p');
+            questionText.className = 'text-lg mb-4 font-medium';
+            questionText.textContent = `${index + 1}. ${question.question}`;
+            
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'space-y-3';
+            
+            question.options.forEach((option, optionIndex) => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors duration-200';
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = `question-${index}`;
+                radio.value = option;
+                radio.className = 'form-radio text-indigo-600 focus:ring-indigo-500';
+                
+                const optionText = document.createElement('span');
+                optionText.textContent = option;
+                optionText.className = 'text-gray-200';
+                
+                label.appendChild(radio);
+                label.appendChild(optionText);
+                optionsDiv.appendChild(label);
+                
+                // Add event listener to track user's answer
+                radio.addEventListener('change', () => {
+                    state.userAnswers[index] = option;
+                });
+            });
+            
+            questionDiv.appendChild(questionText);
+            questionDiv.appendChild(optionsDiv);
+            questionsContainer.appendChild(questionDiv);
+        });
+
+        // Display Yes/No questions
+        questions.yesNo.forEach((question, index) => {
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'mb-6 p-6 glass-effect rounded-lg';
+            
+            const questionText = document.createElement('p');
+            questionText.className = 'text-lg mb-4 font-medium';
+            questionText.textContent = `${questions.mcq.length + index + 1}. ${question.question}`;
+            
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'flex space-x-4';
+            
+            ['Yes', 'No'].forEach((option) => {
+                const label = document.createElement('label');
+                label.className = 'flex-1 flex items-center justify-center space-x-3 p-3 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors duration-200';
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = `yn-${index}`;
+                radio.value = option.toLowerCase();
+                radio.className = 'form-radio text-indigo-600 focus:ring-indigo-500';
+                
+                const optionText = document.createElement('span');
+                optionText.textContent = option;
+                optionText.className = 'text-gray-200';
+                
+                label.appendChild(radio);
+                label.appendChild(optionText);
+                optionsDiv.appendChild(label);
+                
+                radio.addEventListener('change', () => {
+                    state.userAnswers[`yn-${index}`] = option.toLowerCase() === 'yes';
+                });
+            });
+            
+            questionDiv.appendChild(questionText);
+            questionDiv.appendChild(optionsDiv);
+            questionsContainer.appendChild(questionDiv);
+        });
+
+        // Display Short Answer questions
+        questions.shortAnswer.forEach((question, index) => {
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'mb-6 p-6 glass-effect rounded-lg';
+            
+            const questionText = document.createElement('p');
+            questionText.className = 'text-lg mb-4 font-medium';
+            questionText.textContent = `${questions.mcq.length + questions.yesNo.length + index + 1}. ${question.question}`;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-indigo-500';
+            input.placeholder = 'Your answer';
+            
+            input.addEventListener('input', (e) => {
+                state.userAnswers[`sa-${index}`] = e.target.value;
+            });
+            
+            questionDiv.appendChild(questionText);
+            questionDiv.appendChild(input);
+            questionsContainer.appendChild(questionDiv);
+        });
     }
 
-    function createMCQQuestion(question, index) {
-        const div = document.createElement('div');
-        div.className = 'bg-gray-50 p-4 rounded-lg';
-        div.innerHTML = `
-            <p class="font-semibold mb-3">${index + 1}. ${question.question}</p>
-            <div class="space-y-2">
-                ${question.options.map((option, i) => `
-                    <label class="flex items-center space-x-2">
-                        <input type="radio" name="mcq-${index}" value="${i}" class="form-radio text-indigo-600">
-                        <span>${option}</span>
-                    </label>
-                `).join('')}
-            </div>
-            <p class="text-sm text-green-600 mt-2 hidden" data-correct="${question.correct_answer}">
-                La bonne réponse est : ${question.options[question.correct_answer]}
-            </p>
-        `;
-        return div;
+    function handleSubmit() {
+        if (Object.keys(state.userAnswers).length === 0) return;
+        
+        let score = 0;
+        let totalQuestions = 0;
+        
+        // Check MCQ answers
+        state.questions.mcq.forEach((question, index) => {
+            if (state.userAnswers[index] !== undefined) {
+                totalQuestions++;
+                if (state.userAnswers[index] === question.options[question.correct_answer]) {
+                    score++;
+                }
+            }
+        });
+        
+        // Check Yes/No answers
+        state.questions.yesNo.forEach((question, index) => {
+            if (state.userAnswers[`yn-${index}`] !== undefined) {
+                totalQuestions++;
+                if (state.userAnswers[`yn-${index}`] === question.correct_answer) {
+                    score++;
+                }
+            }
+        });
+        
+        // For short answer questions, we'll show the suggested answer
+        state.questions.shortAnswer.forEach((question, index) => {
+            if (state.userAnswers[`sa-${index}`]) {
+                totalQuestions++;
+            }
+        });
+        
+        state.score = score;
+        const percentage = (score / totalQuestions) * 100;
+        
+        scoreDisplay.textContent = `Your score: ${score}/${totalQuestions} (${percentage.toFixed(1)}%)`;
+        resultsContainer.classList.remove('hidden');
     }
 
-    function createYesNoQuestion(question, index) {
-        const div = document.createElement('div');
-        div.className = 'bg-gray-50 p-4 rounded-lg';
-        div.innerHTML = `
-            <p class="font-semibold mb-3">${index + 1}. ${question.question}</p>
-            <div class="space-x-4">
-                <label class="inline-flex items-center">
-                    <input type="radio" name="yn-${index}" value="true" class="form-radio text-indigo-600">
-                    <span class="ml-2">Oui</span>
-                </label>
-                <label class="inline-flex items-center">
-                    <input type="radio" name="yn-${index}" value="false" class="form-radio text-indigo-600">
-                    <span class="ml-2">Non</span>
-                </label>
-            </div>
-            <p class="text-sm text-green-600 mt-2 hidden" data-correct="${question.correct_answer}">
-                La bonne réponse est : ${question.correct_answer ? 'Oui' : 'Non'}
-            </p>
-        `;
-        return div;
+    function showAnswers() {
+        // Show MCQ answers
+        state.questions.mcq.forEach((question, index) => {
+            const options = questionsContainer.querySelectorAll(`input[name="question-${index}"]`);
+            options.forEach((option, optionIndex) => {
+                const label = option.parentElement;
+                if (optionIndex === question.correct_answer) {
+                    label.classList.add('bg-green-800', 'bg-opacity-50');
+                } else if (state.userAnswers[index] === option.value && optionIndex !== question.correct_answer) {
+                    label.classList.add('bg-red-800', 'bg-opacity-50');
+                }
+                option.disabled = true;
+            });
+        });
+
+        // Show Yes/No answers
+        state.questions.yesNo.forEach((question, index) => {
+            const options = questionsContainer.querySelectorAll(`input[name="yn-${index}"]`);
+            options.forEach(option => {
+                const label = option.parentElement;
+                const isYes = option.value === 'yes';
+                if (isYes === question.correct_answer) {
+                    label.classList.add('bg-green-800', 'bg-opacity-50');
+                } else if (state.userAnswers[`yn-${index}`] === isYes && isYes !== question.correct_answer) {
+                    label.classList.add('bg-red-800', 'bg-opacity-50');
+                }
+                option.disabled = true;
+            });
+        });
+
+        // Show short answer suggestions
+        state.questions.shortAnswer.forEach((question, index) => {
+            const input = questionsContainer.querySelector(`input[type="text"]`);
+            if (input) {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.className = 'mt-3 text-emerald-400';
+                suggestionDiv.textContent = `Suggested answer: ${question.suggested_answer}`;
+                input.parentElement.appendChild(suggestionDiv);
+                input.disabled = true;
+            }
+        });
     }
 
-    function createShortAnswerQuestion(question, index) {
-        const div = document.createElement('div');
-        div.className = 'bg-gray-50 p-4 rounded-lg';
-        div.innerHTML = `
-            <p class="font-semibold mb-3">${index + 1}. ${question.question}</p>
-            <input type="text" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Votre réponse">
-            <p class="text-sm text-gray-500 mt-2">Suggestion: ${question.suggested_answer}</p>
-        `;
-        return div;
-    }
+    // Event Listeners
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileSelect);
+    generateBtn.addEventListener('click', handleGenerate);
+    submitBtn.addEventListener('click', handleSubmit);
+    showAnswersBtn.addEventListener('click', showAnswers);
+
+    // Drag and drop event listeners
+    dropZone.addEventListener('dragover', handleDragOver);
+    dropZone.addEventListener('dragleave', handleDragLeave);
+    dropZone.addEventListener('drop', handleDrop);
 });

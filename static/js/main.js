@@ -139,6 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
         questions.mcq.forEach((question, index) => {
             const questionDiv = document.createElement('div');
             questionDiv.className = 'mb-6 p-6 glass-effect rounded-lg';
+            questionDiv.dataset.questionType = 'mcq';
+            questionDiv.dataset.questionIndex = index;
             
             const questionText = document.createElement('p');
             questionText.className = 'text-lg mb-4 font-medium';
@@ -165,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 label.appendChild(optionText);
                 optionsDiv.appendChild(label);
                 
-                // Add event listener to track user's answer
                 radio.addEventListener('change', () => {
                     state.userAnswers[index] = option;
                 });
@@ -180,6 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
         questions.yesNo.forEach((question, index) => {
             const questionDiv = document.createElement('div');
             questionDiv.className = 'mb-6 p-6 glass-effect rounded-lg';
+            questionDiv.dataset.questionType = 'yesno';
+            questionDiv.dataset.questionIndex = index;
             
             const questionText = document.createElement('p');
             questionText.className = 'text-lg mb-4 font-medium';
@@ -220,6 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
         questions.shortAnswer.forEach((question, index) => {
             const questionDiv = document.createElement('div');
             questionDiv.className = 'mb-6 p-6 glass-effect rounded-lg';
+            questionDiv.dataset.questionType = 'shortanswer';
+            questionDiv.dataset.questionIndex = index;
             
             const questionText = document.createElement('p');
             questionText.className = 'text-lg mb-4 font-medium';
@@ -283,7 +288,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function showAnswers() {
         // Show MCQ answers
         state.questions.mcq.forEach((question, index) => {
-            const options = questionsContainer.querySelectorAll(`input[name="question-${index}"]`);
+            const questionDiv = questionsContainer.querySelector(`div[data-question-type="mcq"][data-question-index="${index}"]`);
+            if (!questionDiv) return;
+
+            const options = questionDiv.querySelectorAll('input[type="radio"]');
             options.forEach((option, optionIndex) => {
                 const label = option.parentElement;
                 if (optionIndex === question.correct_answer) {
@@ -297,7 +305,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show Yes/No answers
         state.questions.yesNo.forEach((question, index) => {
-            const options = questionsContainer.querySelectorAll(`input[name="yn-${index}"]`);
+            const questionDiv = questionsContainer.querySelector(`div[data-question-type="yesno"][data-question-index="${index}"]`);
+            if (!questionDiv) return;
+
+            const options = questionDiv.querySelectorAll('input[type="radio"]');
             options.forEach(option => {
                 const label = option.parentElement;
                 const isYes = option.value === 'yes';
@@ -312,14 +323,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show short answer suggestions
         state.questions.shortAnswer.forEach((question, index) => {
-            const input = questionsContainer.querySelector(`input[type="text"]`);
-            if (input) {
+            const questionDiv = questionsContainer.querySelector(`div[data-question-type="shortanswer"][data-question-index="${index}"]`);
+            if (!questionDiv) return;
+
+            const input = questionDiv.querySelector('input[type="text"]');
+            if (!input) return;
+
+            // Check if suggestion div already exists
+            const existingSuggestion = questionDiv.querySelector('.suggestion-div');
+            if (!existingSuggestion) {
                 const suggestionDiv = document.createElement('div');
-                suggestionDiv.className = 'mt-3 text-emerald-400';
+                suggestionDiv.className = 'mt-3 text-emerald-400 suggestion-div';
                 suggestionDiv.textContent = `Suggested answer: ${question.suggested_answer}`;
-                input.parentElement.appendChild(suggestionDiv);
-                input.disabled = true;
+                input.insertAdjacentElement('afterend', suggestionDiv);
             }
+            input.disabled = true;
         });
     }
 

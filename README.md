@@ -184,4 +184,4 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 ## 📞 Support
 
 For issues and feature requests, please [open an issue](https://github.com/gribejfarouk/ai-quizz-generator/issues) on GitHub,
-or mail: supprot@gribejfarouk.me
+or mail: support@gribejfarouk.me

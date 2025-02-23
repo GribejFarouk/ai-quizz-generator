@@ -155,7 +155,7 @@ If you want to modify the code or contribute to the project:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/GribejFarouk/ai-quizz-generator?tab=MIT-1-ov-file#) file for details.
 
 ## 🙏 Acknowledgments
 
@@ -183,4 +183,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-For issues and feature requests, please [open an issue](https://github.com/gribejfarouk/ai-quizz-generator/issues) on GitHub.
+For issues and feature requests, please [open an issue](https://github.com/gribejfarouk/ai-quizz-generator/issues) on GitHub,
+or mail: supprot@gribejfarouk.me

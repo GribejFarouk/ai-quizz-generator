@@ -34,7 +34,7 @@ A modern web application that automatically generates quizzes from PDF documents
 ### Method 1: Using the Executable (Recommended)
 
 1. **Download the Application**
-   - Download `AI-Quiz-Generator.zip` from the releases page
+   - Download `AI-Quiz-Generator.zip` or clone it
    - Extract the ZIP file to your desired location
 
 2. **Run the Application**
